@@ -53,45 +53,45 @@ $ cargo build
  - [x] context_type_set
  - [x] context_user_get
  - [x] context_user_set
- - [ ] fgetfilecon
- - [ ] fgetfilecon_raw
+ - [x] fgetfilecon
+ - [x] fgetfilecon_raw
  - [ ] fini_selinuxmnt
  - [ ] freecon
  - [ ] freeconary
  - [ ] fsetfilecon
  - [ ] fsetfilecon_raw
- - [ ] getcon
- - [ ] getcon_raw
+ - [x] getcon
+ - [x] getcon_raw
  - [ ] get_default_context
  - [ ] get_default_context_with_level
  - [ ] get_default_context_with_role
  - [ ] get_default_context_with_rolelevel
  - [ ] get_default_type
- - [ ] getexeccon
- - [ ] getexeccon_raw
- - [ ] getfilecon
- - [ ] getfilecon_raw
- - [ ] getfscreatecon
- - [ ] getfscreatecon_raw
- - [ ] getkeycreatecon
- - [ ] getkeycreatecon_raw
+ - [x] getexeccon
+ - [x] getexeccon_raw
+ - [x] getfilecon
+ - [x] getfilecon_raw
+ - [x] getfscreatecon
+ - [x] getfscreatecon_raw
+ - [x] getkeycreatecon
+ - [x] getkeycreatecon_raw
  - [ ] get_ordered_context_list
  - [ ] get_ordered_context_list_with_level
- - [ ] getpeercon
- - [ ] getpeercon_raw
- - [ ] getpidcon
+ - [x] getpeercon
+ - [x] getpeercon_raw
+ - [x] getpidcon
  - [ ] getpidcon_raw
- - [ ] getprevcon
- - [ ] getprevcon_raw
+ - [x] getprevcon
+ - [x] getprevcon_raw
  - [ ] getseuser
  - [ ] getseuserbyname
- - [ ] getsockcreatecon
- - [ ] getsockcreatecon_raw
+ - [x] getsockcreatecon
+ - [x] getsockcreatecon_raw
  - [ ] is_context_customizable
  - [x] is_selinux_enabled
  - [x] is_selinux_mls_enabled
- - [ ] lgetfilecon
- - [ ] lgetfilecon_raw
+ - [x] lgetfilecon
+ - [x] lgetfilecon_raw
  - [ ] lsetfilecon
  - [ ] lsetfilecon_raw
  - [ ] manual_user_enter_context
@@ -228,24 +228,24 @@ $ cargo build
  - [ ] selinux_virtual_domain_context_path
  - [ ] selinux_virtual_image_context_path
  - [ ] selinux_x_context_path
- - [ ] setcon
- - [ ] setcon_raw
- - [ ] setexeccon
- - [ ] setexeccon_raw
- - [ ] setexecfilecon
+ - [x] setcon
+ - [x] setcon_raw
+ - [x] setexeccon
+ - [x] setexeccon_raw
+ - [x] setexecfilecon
  - [ ] setfilecon
  - [ ] setfilecon_raw
- - [ ] setfscreatecon
- - [ ] setfscreatecon_raw
- - [ ] setkeycreatecon
- - [ ] setkeycreatecon_raw
+ - [x] setfscreatecon
+ - [x] setfscreatecon_raw
+ - [x] setkeycreatecon
+ - [x] setkeycreatecon_raw
  - [ ] set_matchpathcon_canoncon
  - [ ] set_matchpathcon_flags
  - [ ] set_matchpathcon_invalidcon
  - [ ] set_matchpathcon_printf
  - [ ] set_selinuxmnt
- - [ ] setsockcreatecon
- - [ ] setsockcreatecon_raw
+ - [x] setsockcreatecon
+ - [x] setsockcreatecon_raw
  - [ ] sidget
  - [ ] sidput
  - [ ] string_to_av_perm
