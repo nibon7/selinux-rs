@@ -26,8 +26,12 @@ macro_rules! wrap_getcon {
 macro_rules! wrap_getcon_path {
     ($f:ident) => {
         pub fn $f<P: AsRef<Path>>(path: P) -> Option<SCon> {
-            let mut p = ptr::null_mut();
+            if !path.as_ref().exists() {
+                return None;
+            }
+
             let cs = path.as_ref().to_str().and_then(|s| CString::new(s).ok())?;
+            let mut p = ptr::null_mut();
 
             match unsafe { ffi::$f(cs.as_ptr(), &mut p) } {
                 0 if !p.is_null() => Some(SCon { 0: p }),
@@ -206,17 +210,7 @@ pub trait Setcon {
 
 impl Getcon for Path {
     fn getcon(&self) -> Option<SCon> {
-        if !self.exists() {
-            return None;
-        }
-
-        let mut p = ptr::null_mut();
-        let cs = self.to_str().and_then(|s| CString::new(s).ok())?;
-
-        match unsafe { ffi::getfilecon(cs.as_ptr(), &mut p) } {
-            0 if !p.is_null() => Some(SCon { 0: p }),
-            _ => None,
-        }
+        crate::SCon::getfilecon(&self)
     }
 }
 
@@ -228,37 +222,13 @@ impl Getcon for PathBuf {
 
 impl Getcon for File {
     fn getcon(&self) -> Option<SCon> {
-        let mut p = ptr::null_mut();
-        match unsafe { ffi::fgetfilecon(self.as_raw_fd(), &mut p) } {
-            0 if !p.is_null() => Some(SCon { 0: p }),
-            _ => None,
-        }
+        crate::SCon::fgetfilecon(&self)
     }
 }
 
 impl Setcon for Path {
     fn setcon(&self, scon: &str) -> Result<()> {
-        if !self.exists() {
-            return Err(SeError::IoErr(io::Error::new(
-                io::ErrorKind::NotFound,
-                "file not found",
-            )));
-        }
-
-        let cs = self
-            .to_str()
-            .ok_or(SeError::IoErr(io::Error::new(
-                io::ErrorKind::Other,
-                "fail to convert path to str",
-            )))
-            .and_then(|s| CString::new(s).map_err(|e| SeError::NulErr(e)))?;
-
-        let s = CString::new(scon)?;
-
-        match unsafe { ffi::setfilecon(cs.as_ptr(), s.as_ptr()) } {
-            0 => Ok(()),
-            _ => Err(io::Error::from_raw_os_error(errno::errno().0)).map_err(|e| SeError::IoErr(e)),
-        }
+        crate::SCon::setfilecon(&self, scon)
     }
 }
 
@@ -270,11 +240,6 @@ impl Setcon for PathBuf {
 
 impl Setcon for File {
     fn setcon(&self, scon: &str) -> Result<()> {
-        let cs = CString::new(scon)?;
-
-        match unsafe { ffi::fsetfilecon(self.as_raw_fd(), cs.as_ptr()) } {
-            0 => Ok(()),
-            _ => Err(io::Error::from_raw_os_error(errno::errno().0)).map_err(|e| SeError::IoErr(e)),
-        }
+        crate::SCon::fsetfilecon(&self, scon)
     }
 }
