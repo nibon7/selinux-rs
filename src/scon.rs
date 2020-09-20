@@ -6,7 +6,7 @@ use std::fmt;
 use std::fs::File;
 use std::io;
 use std::os::unix::io::AsRawFd;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::ptr;
 
 pub struct SCon(*mut c_char);
@@ -41,9 +41,8 @@ macro_rules! wrap_getcon_fd {
     ($f:ident) => {
         pub fn $f(f: &File) -> Option<SCon> {
             let mut p = ptr::null_mut();
-            let fd = f.as_raw_fd();
 
-            match unsafe { ffi::$f(fd, &mut p) } {
+            match unsafe { ffi::$f(f.as_raw_fd(), &mut p) } {
                 0 if !p.is_null() => Some(SCon { 0: p }),
                 _ => None,
             }
@@ -55,9 +54,52 @@ macro_rules! wrap_setcon {
     ($f:ident) => {
         pub fn $f(scon: &str) -> Result<()> {
             let cs = CString::new(scon)?;
-            let p = cs.as_ptr();
 
-            match unsafe { ffi::$f(p as *const i8) } {
+            match unsafe { ffi::$f(cs.as_ptr()) } {
+                0 => Ok(()),
+                _ => Err(io::Error::from_raw_os_error(errno::errno().0))
+                    .map_err(|e| SeError::IoErr(e)),
+            }
+        }
+    };
+}
+
+macro_rules! wrap_setcon_path {
+    ($f:ident) => {
+        pub fn $f<P: AsRef<Path>>(p: P, scon: &str) -> Result<()> {
+            if !p.as_ref().exists() {
+                return Err(SeError::IoErr(io::Error::new(
+                    io::ErrorKind::NotFound,
+                    "file not found",
+                )));
+            }
+
+            let cs = p
+                .as_ref()
+                .to_str()
+                .ok_or(SeError::IoErr(io::Error::new(
+                    io::ErrorKind::Other,
+                    "fail to convert path to str",
+                )))
+                .and_then(|s| CString::new(s).map_err(|e| SeError::NulErr(e)))?;
+
+            let s = CString::new(scon)?;
+
+            match unsafe { ffi::$f(cs.as_ptr(), s.as_ptr()) } {
+                0 => Ok(()),
+                _ => Err(io::Error::from_raw_os_error(errno::errno().0))
+                    .map_err(|e| SeError::IoErr(e)),
+            }
+        }
+    };
+}
+
+macro_rules! wrap_setcon_fd {
+    ($f:ident) => {
+        pub fn $f(f: &File, scon: &str) -> Result<()> {
+            let cs = CString::new(scon)?;
+
+            match unsafe { ffi::$f(f.as_raw_fd(), cs.as_ptr()) } {
                 0 => Ok(()),
                 _ => Err(io::Error::from_raw_os_error(errno::errno().0))
                     .map_err(|e| SeError::IoErr(e)),
@@ -108,14 +150,18 @@ impl SCon {
     wrap_setcon!(setsockcreatecon);
     wrap_setcon!(setsockcreatecon_raw);
 
+    wrap_setcon_path!(setfilecon);
+    wrap_setcon_path!(setfilecon_raw);
+    wrap_setcon_path!(lsetfilecon);
+    wrap_setcon_path!(lsetfilecon_raw);
+    wrap_setcon_fd!(fsetfilecon);
+    wrap_setcon_fd!(fsetfilecon_raw);
+
     pub fn setexecfilecon<P: AsRef<Path>>(filename: P, fallback_type: &str) -> Result<()> {
         let cs_type = CString::new(fallback_type)?;
-        let p_type = cs_type.as_ptr();
-
         let cs_filename = CString::new(filename.as_ref().to_str().unwrap())?;
-        let p_filename = cs_filename.as_ptr();
 
-        match unsafe { ffi::setexecfilecon(p_filename, p_type as *const i8) } {
+        match unsafe { ffi::setexecfilecon(cs_filename.as_ptr(), cs_type.as_ptr()) } {
             0 => Ok(()),
             _ => Err(io::Error::from_raw_os_error(errno::errno().0)).map_err(|e| SeError::IoErr(e)),
         }
@@ -146,6 +192,119 @@ impl fmt::Debug for SCon {
         match cs.to_str() {
             Ok(s) => write!(f, "{}", s),
             Err(_) => Err(fmt::Error),
+        }
+    }
+}
+
+pub trait Getcon {
+    fn getcon(&self) -> Option<SCon>;
+}
+
+pub trait Setcon {
+    fn setcon(&self, s: &str) -> Result<()>;
+}
+
+impl Getcon for Path {
+    fn getcon(&self) -> Option<SCon> {
+        if !self.exists() {
+            return None;
+        }
+
+        let mut p = ptr::null_mut();
+        let cs = self.to_str().and_then(|s| CString::new(s).ok())?;
+
+        match unsafe { ffi::getfilecon(cs.as_ptr(), &mut p) } {
+            0 if !p.is_null() => Some(SCon { 0: p }),
+            _ => None,
+        }
+    }
+}
+
+impl Getcon for PathBuf {
+    fn getcon(&self) -> Option<SCon> {
+        if !self.exists() {
+            return None;
+        }
+
+        let mut p = ptr::null_mut();
+        let cs = self.to_str().and_then(|s| CString::new(s).ok())?;
+
+        match unsafe { ffi::getfilecon(cs.as_ptr(), &mut p) } {
+            0 if !p.is_null() => Some(SCon { 0: p }),
+            _ => None,
+        }
+    }
+}
+
+impl Getcon for File {
+    fn getcon(&self) -> Option<SCon> {
+        let mut p = ptr::null_mut();
+        match unsafe { ffi::fgetfilecon(self.as_raw_fd(), &mut p) } {
+            0 if !p.is_null() => Some(SCon { 0: p }),
+            _ => None,
+        }
+    }
+}
+
+impl Setcon for Path {
+    fn setcon(&self, scon: &str) -> Result<()> {
+        if !self.exists() {
+            return Err(SeError::IoErr(io::Error::new(
+                io::ErrorKind::NotFound,
+                "file not found",
+            )));
+        }
+
+        let cs = self
+            .to_str()
+            .ok_or(SeError::IoErr(io::Error::new(
+                io::ErrorKind::Other,
+                "fail to convert path to str",
+            )))
+            .and_then(|s| CString::new(s).map_err(|e| SeError::NulErr(e)))?;
+
+        let s = CString::new(scon)?;
+
+        match unsafe { ffi::setfilecon(cs.as_ptr(), s.as_ptr()) } {
+            0 => Ok(()),
+            _ => Err(io::Error::from_raw_os_error(errno::errno().0)).map_err(|e| SeError::IoErr(e)),
+        }
+    }
+}
+
+impl Setcon for PathBuf {
+    fn setcon(&self, scon: &str) -> Result<()> {
+        if !self.exists() {
+            return Err(SeError::IoErr(io::Error::new(
+                io::ErrorKind::NotFound,
+                "file not found",
+            )));
+        }
+
+        let cs = self
+            .to_str()
+            .ok_or(SeError::IoErr(io::Error::new(
+                io::ErrorKind::Other,
+                "fail to convert path to str",
+            )))
+            .and_then(|s| CString::new(s).map_err(|e| SeError::NulErr(e)))?;
+
+        let s = CString::new(scon)?;
+
+        match unsafe { ffi::setfilecon(cs.as_ptr(), s.as_ptr()) } {
+            0 => Ok(()),
+            _ => Err(io::Error::from_raw_os_error(errno::errno().0)).map_err(|e| SeError::IoErr(e)),
+        }
+    }
+}
+
+impl Setcon for File {
+    fn setcon(&self, scon: &str) -> Result<()> {
+        let cs = CString::new(scon)?;
+
+        match unsafe { ffi::fsetfilecon(self.as_raw_fd(), cs.as_ptr()) } {
+            0 => Ok(()),
+            _ => Err(io::Error::from_raw_os_error(errno::errno().0)).map_err(|e| SeError::IoErr(e)),
         }
     }
 }

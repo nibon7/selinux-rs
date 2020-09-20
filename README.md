@@ -61,8 +61,8 @@ $ cargo build
  - [ ] fini_selinuxmnt
  - [ ] freecon
  - [ ] freeconary
- - [ ] fsetfilecon
- - [ ] fsetfilecon_raw
+ - [x] fsetfilecon
+ - [x] fsetfilecon_raw
  - [x] getcon
  - [x] getcon_raw
  - [ ] get_default_context
@@ -95,8 +95,8 @@ $ cargo build
  - [x] is_selinux_mls_enabled
  - [x] lgetfilecon
  - [x] lgetfilecon_raw
- - [ ] lsetfilecon
- - [ ] lsetfilecon_raw
+ - [x] lsetfilecon
+ - [x] lsetfilecon_raw
  - [ ] manual_user_enter_context
  - [ ] map_class
  - [ ] map_decision
@@ -236,8 +236,8 @@ $ cargo build
  - [x] setexeccon
  - [x] setexeccon_raw
  - [x] setexecfilecon
- - [ ] setfilecon
- - [ ] setfilecon_raw
+ - [x] setfilecon
+ - [x] setfilecon_raw
  - [x] setfscreatecon
  - [x] setfscreatecon_raw
  - [x] setkeycreatecon

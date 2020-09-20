@@ -49,6 +49,13 @@ extern "C" {
     pub fn setsockcreatecon(scon: *const c_char) -> c_int;
     pub fn setsockcreatecon_raw(scon: *const c_char) -> c_int;
 
+    pub fn setfilecon(path: *const c_char, scon: *const c_char) -> c_int;
+    pub fn setfilecon_raw(path: *const c_char, scon: *const c_char) -> c_int;
+    pub fn lsetfilecon(path: *const c_char, scon: *const c_char) -> c_int;
+    pub fn lsetfilecon_raw(path: *const c_char, scon: *const c_char) -> c_int;
+    pub fn fsetfilecon(fd: libc::c_int, scon: *const c_char) -> c_int;
+    pub fn fsetfilecon_raw(fd: libc::c_int, scon: *const c_char) -> c_int;
+
     pub fn setexecfilecon(filename: *const c_char, fallback_type: *const c_char) -> c_int;
 
     pub fn freecon(scon: *mut c_char);
