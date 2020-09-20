@@ -1,6 +1,7 @@
 use crate::ffi;
 use crate::selinux_macros::{wrap_context_get, wrap_context_set};
 use std::ffi::{CStr, CString};
+use std::fmt;
 
 pub struct Context(ffi::context_t);
 
@@ -37,6 +38,24 @@ impl Context {
 impl Drop for Context {
     fn drop(&mut self) {
         unsafe { ffi::context_free(self.0) }
+    }
+}
+
+impl fmt::Display for Context {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.to_str() {
+            Some(s) => write!(f, "{}", s),
+            None => Err(fmt::Error),
+        }
+    }
+}
+
+impl fmt::Debug for Context {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.to_str() {
+            Some(s) => write!(f, "{}", s),
+            None => Err(fmt::Error),
+        }
     }
 }
 
