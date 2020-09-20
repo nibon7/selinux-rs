@@ -158,18 +158,10 @@ impl SCon {
     wrap_setcon_path!(setfilecon_raw);
     wrap_setcon_path!(lsetfilecon);
     wrap_setcon_path!(lsetfilecon_raw);
+    wrap_setcon_path!(setexecfilecon);
+
     wrap_setcon_fd!(fsetfilecon);
     wrap_setcon_fd!(fsetfilecon_raw);
-
-    pub fn setexecfilecon<P: AsRef<Path>>(filename: P, fallback_type: &str) -> Result<()> {
-        let cs_type = CString::new(fallback_type)?;
-        let cs_filename = CString::new(filename.as_ref().to_str().unwrap())?;
-
-        match unsafe { ffi::setexecfilecon(cs_filename.as_ptr(), cs_type.as_ptr()) } {
-            0 => Ok(()),
-            _ => Err(io::Error::from_raw_os_error(errno::errno().0)).map_err(|e| SeError::IoErr(e)),
-        }
-    }
 }
 
 impl Drop for SCon {
