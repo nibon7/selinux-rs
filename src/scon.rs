@@ -149,14 +149,3 @@ impl fmt::Debug for SCon {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_getcon() {
-        let scon = SCon::getcon();
-        assert!(scon.is_some());
-    }
-}
