@@ -1,6 +1,9 @@
 # selinux-rs
 libselinux bindings for Rust
 
+![](https://github.com/nibon7/selinux-rs/workflows/Build/badge.svg)
+[![Build Status](https://travis-ci.org/nibon7/selinux-rs.svg?branch=master)](https://travis-ci.org/nibon7/selinux-rs)
+
 ## Requires
 
 ```sh

@@ -1,0 +1,14 @@
+language: rust
+rust:
+  - stable
+  - beta
+  - nightly
+install:
+  - sudo apt-get install libselinux1-dev -y
+script:
+  - cargo build --verbose --all
+  - cargo doc --verbose --all
+  - cargo test --verbose --all
+branches:
+  only:
+    - master
