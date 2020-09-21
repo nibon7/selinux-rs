@@ -52,10 +52,7 @@ impl fmt::Display for Context {
 
 impl fmt::Debug for Context {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.to_str() {
-            Some(s) => write!(f, "{}", s),
-            None => Err(fmt::Error),
-        }
+        fmt::Display::fmt(self, f)
     }
 }
 
@@ -159,5 +156,12 @@ mod tests {
 
         let mut ctx = c.unwrap();
         assert_eq!(ctx.set_range("s0").and_then(|c| c.get_range()), Some("s0"));
+    }
+
+    #[test]
+    fn test_formatter() {
+        let c = Context::new(s).unwrap();
+        assert_eq!(format!("{}", c), c.to_str().unwrap());
+        assert_eq!(format!("{:?}", c), c.to_str().unwrap());
     }
 }
