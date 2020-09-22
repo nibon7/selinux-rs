@@ -1,3 +1,4 @@
+use std::ffi::CStr;
 use std::fmt::{Debug, Display, Formatter};
 pub struct Context {
     user: String,
@@ -14,6 +15,23 @@ macro_rules! context_access {
 
         pub fn $setter(&mut self, $field: &str) {
             self.$field = $field.to_owned();
+        }
+    };
+}
+
+macro_rules! get_context {
+    ($(#[$attr:meta])* $func:ident, $wrap:ident) => {
+        $(#[$attr])*
+        pub fn $func() -> Option<Self> {
+            let mut context = std::ptr::null_mut();
+            unsafe {
+                if selinux_sys::$wrap(&mut context) != 0 && context.is_null() {
+                    return None;
+                }
+                let res = Self::new(CStr::from_ptr(context).to_str().ok()?);
+                selinux_sys::freecon(context);
+                res
+            }
         }
     };
 }
@@ -41,6 +59,31 @@ impl Context {
     context_access!(role, set_role);
     context_access!(_type, set_type);
     context_access!(range, set_range);
+
+    get_context!(
+        /// Retrieves the context of the current process.
+        current,
+        getcon
+    );
+
+    get_context!(
+        /// Retrieves  the  context of the current process without context
+        /// translation.
+        current_raw,
+        getcon_raw
+    );
+
+    get_context!(
+        /// Same as `current` but gets the context before the last exec.
+        previous,
+        getprevcon
+    );
+
+    get_context!(
+        /// Same as `previous` but do not perform context translation.
+        previous_raw,
+        getprevcon_raw
+    );
 }
 
 impl Display for Context {
@@ -88,5 +131,12 @@ mod tests {
         let context = Context::new(CONTEXT).unwrap();
         assert_eq!(format!("{}", context), CONTEXT);
         assert_eq!(format!("{:?}", context), CONTEXT);
+    }
+
+    #[test]
+    fn context_retrieve() {
+        if crate::enabled().unwrap() {
+            Context::current().unwrap();
+        }
     }
 }
