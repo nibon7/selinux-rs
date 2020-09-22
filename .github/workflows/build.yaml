@@ -23,10 +23,10 @@ jobs:
     - name: Install Rust (rustup)
       run: rustup update ${{ matrix.rust }} --no-self-update && rustup default ${{ matrix.rust }}
       shell: bash
-    - run: sudo apt-get install libselinux1-dev -y
-    - run: cargo build --verbose --all
-    - run: cargo doc --verbose --all
-    - run: cargo test --verbose --all
+    - run: sudo apt-get install build-essential -y
+    - run: cargo build --verbose --workspace
+    - run: cargo doc --verbose --workspace
+    - run: cargo test --verbose --workspace
 
   rustfmt:
     name: Rustfmt

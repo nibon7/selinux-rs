@@ -4,11 +4,11 @@ rust:
   - beta
   - nightly
 install:
-  - sudo apt-get install libselinux1-dev -y
+  - sudo apt-get install build-essential -y
 script:
-  - cargo build --verbose --all
-  - cargo doc --verbose --all
-  - cargo test --verbose --all
+  - cargo build --verbose --workspace
+  - cargo doc --verbose --workspace
+  - cargo test --verbose --workspace
 branches:
   only:
     - master
