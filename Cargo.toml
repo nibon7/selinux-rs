@@ -3,7 +3,6 @@ name = "selinux"
 version = "0.1.0"
 authors = ["nibon7 <nibon7@163.com>"]
 edition = "2018"
-build = "build.rs"
 categories = ["api-bindings"]
 description = "Bindings for libselinux"
 keywords = ["selinux"]
@@ -17,9 +16,6 @@ libc = "0.2"
 errno = "0.2"
 selinux-macros = { path = "selinux-macros" }
 selinux-sys = { path = "selinux-sys" }
-
-[build-dependencies]
-pkg-config = "0.3"
 
 [workspace]
 members = [
