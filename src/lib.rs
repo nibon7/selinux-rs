@@ -4,7 +4,6 @@ extern crate selinux_macros;
 
 mod context;
 mod error;
-mod ffi;
 mod scon;
 mod utils;
 

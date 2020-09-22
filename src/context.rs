@@ -1,15 +1,15 @@
-use crate::ffi;
 use crate::selinux_macros::{wrap_context_get, wrap_context_set};
+use selinux_sys;
 use std::ffi::{CStr, CString};
 use std::fmt;
 
-pub struct Context(ffi::context_t);
+pub struct Context(selinux_sys::context_t);
 
 impl Context {
     pub fn new(s: &str) -> Option<Self> {
         let cs = CString::new(s).ok()?;
 
-        match unsafe { ffi::context_new(cs.as_ptr() as *const i8) } {
+        match unsafe { selinux_sys::context_new(cs.as_ptr() as *const i8) } {
             p if !p.is_null() => Some(Self { 0: p }),
             _ => None,
         }
@@ -17,7 +17,7 @@ impl Context {
 
     pub fn to_str(&self) -> Option<&str> {
         unsafe {
-            match ffi::context_str(self.0) {
+            match selinux_sys::context_str(self.0) {
                 p if !p.is_null() => CStr::from_ptr(p).to_str().ok(),
                 _ => None,
             }
@@ -37,7 +37,7 @@ impl Context {
 
 impl Drop for Context {
     fn drop(&mut self) {
-        unsafe { ffi::context_free(self.0) }
+        unsafe { selinux_sys::context_free(self.0) }
     }
 }
 
