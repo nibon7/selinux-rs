@@ -1,4 +1,4 @@
-use crate::{ffi, Result, SeError};
+use crate::{Result, SeError};
 use errno;
 use libc::c_char;
 use std::ffi::{CStr, CString};
@@ -15,7 +15,7 @@ macro_rules! wrap_getcon {
     ($f:ident) => {
         pub fn $f() -> Option<SCon> {
             let mut p = ptr::null_mut();
-            match unsafe { ffi::$f(&mut p) } {
+            match unsafe { selinux_sys::$f(&mut p) } {
                 0 if !p.is_null() => Some(SCon { 0: p }),
                 _ => None,
             }
@@ -33,7 +33,7 @@ macro_rules! wrap_getcon_path {
             let cs = path.as_ref().to_str().and_then(|s| CString::new(s).ok())?;
             let mut p = ptr::null_mut();
 
-            match unsafe { ffi::$f(cs.as_ptr(), &mut p) } {
+            match unsafe { selinux_sys::$f(cs.as_ptr(), &mut p) } {
                 0 if !p.is_null() => Some(SCon { 0: p }),
                 _ => None,
             }
@@ -46,7 +46,7 @@ macro_rules! wrap_getcon_fd {
         pub fn $f(f: &File) -> Option<SCon> {
             let mut p = ptr::null_mut();
 
-            match unsafe { ffi::$f(f.as_raw_fd(), &mut p) } {
+            match unsafe { selinux_sys::$f(f.as_raw_fd(), &mut p) } {
                 0 if !p.is_null() => Some(SCon { 0: p }),
                 _ => None,
             }
@@ -59,7 +59,7 @@ macro_rules! wrap_setcon {
         pub fn $f(scon: &str) -> Result<()> {
             let cs = CString::new(scon)?;
 
-            match unsafe { ffi::$f(cs.as_ptr()) } {
+            match unsafe { selinux_sys::$f(cs.as_ptr()) } {
                 0 => Ok(()),
                 _ => Err(io::Error::from_raw_os_error(errno::errno().0))
                     .map_err(|e| SeError::IoErr(e)),
@@ -89,7 +89,7 @@ macro_rules! wrap_setcon_path {
 
             let s = CString::new(scon)?;
 
-            match unsafe { ffi::$f(cs.as_ptr(), s.as_ptr()) } {
+            match unsafe { selinux_sys::$f(cs.as_ptr(), s.as_ptr()) } {
                 0 => Ok(()),
                 _ => Err(io::Error::from_raw_os_error(errno::errno().0))
                     .map_err(|e| SeError::IoErr(e)),
@@ -103,7 +103,7 @@ macro_rules! wrap_setcon_fd {
         pub fn $f(f: &File, scon: &str) -> Result<()> {
             let cs = CString::new(scon)?;
 
-            match unsafe { ffi::$f(f.as_raw_fd(), cs.as_ptr()) } {
+            match unsafe { selinux_sys::$f(f.as_raw_fd(), cs.as_ptr()) } {
                 0 => Ok(()),
                 _ => Err(io::Error::from_raw_os_error(errno::errno().0))
                     .map_err(|e| SeError::IoErr(e)),
@@ -128,7 +128,7 @@ impl SCon {
 
     pub fn getpidcon(pid: i32) -> Option<Self> {
         let mut p = ptr::null_mut();
-        match unsafe { ffi::getpidcon(pid, &mut p) } {
+        match unsafe { selinux_sys::getpidcon(pid, &mut p) } {
             0 if !p.is_null() => Some(Self { 0: p }),
             _ => None,
         }
@@ -166,7 +166,7 @@ impl SCon {
 
 impl Drop for SCon {
     fn drop(&mut self) {
-        unsafe { ffi::freecon(self.0) }
+        unsafe { selinux_sys::freecon(self.0) }
     }
 }
 

@@ -16,7 +16,7 @@ pub fn wrap_context_get(ident: TokenStream) -> TokenStream {
     let exp = quote::quote! {
         pub fn #f1(&self) -> Option<&str> {
             unsafe {
-                match crate::ffi::#f2(self.0) {
+                match selinux_sys::#f2(self.0) {
                     p if !p.is_null() => std::ffi::CStr::from_ptr(p).to_str().ok(),
                     _ => None,
                 }
@@ -39,7 +39,7 @@ pub fn wrap_context_set(ident: TokenStream) -> TokenStream {
         pub fn #f1(&mut self, s: &str) -> Option<&mut Self> {
             let cs = CString::new(s).ok()?;
 
-            match unsafe { ffi::#f2(self.0, cs.as_ptr() as *const i8) } {
+            match unsafe { selinux_sys::#f2(self.0, cs.as_ptr() as *const i8) } {
                 0 => Some(self),
                 _ => None,
             }
