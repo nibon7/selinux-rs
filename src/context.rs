@@ -1,58 +1,57 @@
-use crate::selinux_macros::{wrap_context_get, wrap_context_set};
-use selinux_sys;
-use std::ffi::{CStr, CString};
-use std::fmt;
+use std::fmt::{Debug, Display, Formatter};
+pub struct Context {
+    user: String,
+    role: String,
+    _type: String,
+    range: String,
+}
 
-pub struct Context(selinux_sys::context_t);
+macro_rules! context_access {
+    ($field:ident, $setter:ident) => {
+        pub fn $field(&self) -> &str {
+            self.$field.as_str()
+        }
+
+        pub fn $setter(&mut self, $field: &str) {
+            self.$field = $field.to_owned();
+        }
+    };
+}
 
 impl Context {
-    pub fn new(s: &str) -> Option<Self> {
-        let cs = CString::new(s).ok()?;
-
-        match unsafe { selinux_sys::context_new(cs.as_ptr() as *const i8) } {
-            p if !p.is_null() => Some(Self { 0: p }),
-            _ => None,
-        }
+    pub fn new(context: &str) -> Option<Self> {
+        let mut iter = context.split(":");
+        let user = iter.next()?.to_owned();
+        let role = iter.next()?.to_owned();
+        let _type = iter.next()?.to_owned();
+        let range = iter.collect::<Vec<&str>>().join(":");
+        Some(Context {
+            user,
+            role,
+            _type,
+            range,
+        })
     }
 
-    pub fn to_str(&self) -> Option<&str> {
-        unsafe {
-            match selinux_sys::context_str(self.0) {
-                p if !p.is_null() => CStr::from_ptr(p).to_str().ok(),
-                _ => None,
-            }
-        }
+    pub fn to_string(&self) -> String {
+        format!("{}:{}:{}:{}", self.user, self.role, self._type, self.range)
     }
 
-    wrap_context_get!(user);
-    wrap_context_get!(role);
-    wrap_context_get!(type);
-    wrap_context_get!(range);
-
-    wrap_context_set!(user);
-    wrap_context_set!(role);
-    wrap_context_set!(type);
-    wrap_context_set!(range);
+    context_access!(user, set_user);
+    context_access!(role, set_role);
+    context_access!(_type, set_type);
+    context_access!(range, set_range);
 }
 
-impl Drop for Context {
-    fn drop(&mut self) {
-        unsafe { selinux_sys::context_free(self.0) }
+impl Display for Context {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        write!(f, "{}", self.to_string())
     }
 }
 
-impl fmt::Display for Context {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.to_str() {
-            Some(s) => write!(f, "{}", s),
-            None => Err(fmt::Error),
-        }
-    }
-}
-
-impl fmt::Debug for Context {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(self, f)
+impl Debug for Context {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        Display::fmt(self, f)
     }
 }
 
@@ -60,108 +59,34 @@ impl fmt::Debug for Context {
 mod tests {
     use super::*;
 
-    #[allow(non_upper_case_globals)]
-    const s: &str = "unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023";
+    const CONTEXT: &str = "user_u:role_r:type_t:s0-s0:c0.c1023";
+    const CONTEXT_WITHOUT_RANGE: &str = "user_u:role_r:type_t";
 
     #[test]
-    fn test_new() {
-        assert!(Context::new(s).is_some());
-    }
+    fn context_basic() {
+        let mut context = Context::new(CONTEXT).unwrap();
+        assert_eq!(context.user(), "user_u");
+        assert_eq!(context._type(), "type_t");
+        assert_eq!(context.role(), "role_r");
+        assert_eq!(context.range(), "s0-s0:c0.c1023");
 
-    #[test]
-    fn test_to_str() {
-        let c = Context::new(s);
-        assert!(c.is_some());
+        context.set_type("unconfined_t");
+        assert_eq!(context._type(), "unconfined_t");
 
-        let ctx = c.unwrap();
-        assert_eq!(ctx.to_str(), Some(s));
-    }
+        context.set_range("s0");
+        assert_eq!(context.range(), "s0");
 
-    #[test]
-    fn test_get_user() {
-        let c = Context::new(s);
-        assert!(c.is_some());
+        assert_eq!(context.to_string(), "user_u:role_r:unconfined_t:s0");
 
-        let ctx = c.unwrap();
-        assert_eq!(ctx.get_user(), Some("unconfined_u"));
-    }
-
-    #[test]
-    fn test_get_role() {
-        let c = Context::new(s);
-        assert!(c.is_some());
-
-        let ctx = c.unwrap();
-        assert_eq!(ctx.get_role(), Some("unconfined_r"));
-    }
-
-    #[test]
-    fn test_get_type() {
-        let c = Context::new(s);
-        assert!(c.is_some());
-
-        let ctx = c.unwrap();
-        assert_eq!(ctx.get_type(), Some("unconfined_t"));
-    }
-
-    #[test]
-    fn test_get_range() {
-        let c = Context::new(s);
-        assert!(c.is_some());
-
-        let ctx = c.unwrap();
-        assert_eq!(ctx.get_range(), Some("s0-s0:c0.c1023"));
-    }
-
-    #[test]
-    fn test_set_user() {
-        let c = Context::new(s);
-        assert!(c.is_some());
-
-        let mut ctx = c.unwrap();
-        assert_eq!(
-            ctx.set_user("user_u").and_then(|c| c.get_user()),
-            Some("user_u")
-        );
-    }
-
-    #[test]
-    fn test_set_role() {
-        let c = Context::new(s);
-        assert!(c.is_some());
-
-        let mut ctx = c.unwrap();
-        assert_eq!(
-            ctx.set_role("user_r").and_then(|c| c.get_role()),
-            Some("user_r")
-        );
-    }
-
-    #[test]
-    fn test_set_type() {
-        let c = Context::new(s);
-        assert!(c.is_some());
-
-        let mut ctx = c.unwrap();
-        assert_eq!(
-            ctx.set_type("user_t").and_then(|c| c.get_type()),
-            Some("user_t")
-        );
-    }
-
-    #[test]
-    fn test_set_range() {
-        let c = Context::new(s);
-        assert!(c.is_some());
-
-        let mut ctx = c.unwrap();
-        assert_eq!(ctx.set_range("s0").and_then(|c| c.get_range()), Some("s0"));
+        let context = Context::new(CONTEXT_WITHOUT_RANGE).unwrap();
+        assert_eq!(context.range(), "");
+        assert_eq!(context._type(), "type_t");
     }
 
     #[test]
     fn test_formatter() {
-        let c = Context::new(s).unwrap();
-        assert_eq!(format!("{}", c), c.to_str().unwrap());
-        assert_eq!(format!("{:?}", c), c.to_str().unwrap());
+        let context = Context::new(CONTEXT).unwrap();
+        assert_eq!(format!("{}", context), CONTEXT);
+        assert_eq!(format!("{:?}", context), CONTEXT);
     }
 }
