@@ -22,3 +22,7 @@ members = [
     "selinux-macros",
     "selinux-sys"
 ]
+
+[features]
+default = []
+build-static-libselinux = ["selinux-sys/build-static"]

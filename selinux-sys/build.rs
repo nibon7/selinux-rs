@@ -1,9 +1,49 @@
 use bindgen;
+use cc;
+use glob;
 use pkg_config::probe_library;
 use std::env;
+use std::ffi::OsStr;
 use std::path::PathBuf;
+use std::process::Command;
 
 const SELINUX_STATIC: &str = "SELINUX_STATIC";
+
+fn build_static_libselinux() {
+    if !PathBuf::from("selinux/.git").exists() {
+        Command::new("git")
+            .args(&["submodule", "update", "--init"])
+            .status()
+            .unwrap();
+    }
+
+    let output_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
+
+    let mut cfg = cc::Build::new();
+    for c in glob::glob("selinux/libselinux/src/*.c")
+        .unwrap()
+        .filter(|p| match p {
+            Ok(path) => {
+                // filter out audit2why.c and label_backends_androi.c
+                path.file_name() != Some(OsStr::new("audit2why.c"))
+                    && path.file_name() != Some(OsStr::new("label_backends_android.c"))
+            }
+            _ => false,
+        })
+    {
+        cfg.file(&c.unwrap());
+    }
+
+    cfg.include("selinux/libselinux/include")
+        .include("selinux/libsepol/include")
+        .define("USE_PCRE2", None)
+        .define("PCRE2_CODE_UNIT_WIDTH", Some("8"))
+        .define("NO_ANDROID_BACKEND", None)
+        .define("_GNU_SOURCE", None)
+        .cargo_metadata(true)
+        .out_dir(&output_dir)
+        .compile("libselinux.a");
+}
 
 fn print_library(lib: &pkg_config::Library, mode: &str) {
     for p in &lib.include_paths {
@@ -29,7 +69,7 @@ fn print_library(lib: &pkg_config::Library, mode: &str) {
 
 fn try_pkg_config() -> Vec<PathBuf> {
     let libselinux = probe_library("libselinux")
-        .expect("can't find libselinux, please install libselinux-devel or libselinux-dev");
+        .expect("can't find libselinux, please install libselinux-devel or libselinux1-dev or try to use build-static feature to build libselinux from scratch.");
 
     let mode = match env::var_os(SELINUX_STATIC) {
         Some(_) => "static",
@@ -42,14 +82,27 @@ fn try_pkg_config() -> Vec<PathBuf> {
 }
 
 fn main() {
-    println!("cargo:rerun-if-env-changed={}", SELINUX_STATIC);
-    println!("cargo:rerun-if-changed=build.rs");
+    let build_static = env::var("CARGO_FEATURE_BUILD_STATIC").is_ok();
 
-    let include_paths = try_pkg_config();
+    println!("cargo:rerun-if-changed=build.rs");
+    if !build_static {
+        println!("cargo:rerun-if-env-changed={}", SELINUX_STATIC);
+    }
+
+    let mut include_paths: Vec<PathBuf>;
+
+    if build_static {
+        include_paths = Vec::new();
+        build_static_libselinux();
+        include_paths.push(PathBuf::from("selinux/libselinux/include"));
+    } else {
+        include_paths = try_pkg_config();
+    }
 
     let mut builder = bindgen::Builder::default()
         .header("wrapper.h")
         .default_enum_style(bindgen::EnumVariation::ModuleConsts)
+        .ctypes_prefix("::libc")
         .whitelist_function(".*con")
         .whitelist_function(".*conary")
         .whitelist_function(".*con_raw")

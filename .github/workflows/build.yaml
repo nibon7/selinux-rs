@@ -24,9 +24,15 @@ jobs:
       run: rustup update ${{ matrix.rust }} --no-self-update && rustup default ${{ matrix.rust }}
       shell: bash
     - run: sudo apt-get install libselinux1-dev -y
-    - run: cargo build --verbose --all
-    - run: cargo doc --verbose --all
-    - run: cargo test --verbose --all
+    - run: sudo apt-get install build-essential -y
+    - run: sudo apt-get install libpcre2-dev -y
+    - run: cargo build -vv --workspace
+    - run: cargo doc -vv --workspace
+    - run: cargo test -vv --workspace
+    - run: cargo clean
+    - run: cargo build -vv --workspace --features "build-static-libselinux"
+    - run: cargo doc -vv --workspace --features "build-static-libselinux"
+    - run: cargo clean && cargo test -vv --workspace --features "build-static-libselinux"
 
   rustfmt:
     name: Rustfmt
