@@ -5,10 +5,16 @@ rust:
   - nightly
 install:
   - sudo apt-get install libselinux1-dev -y
+  - sudo apt-get install build-essential -y
+  - sudo apt-get install libpcre2-dev -y
 script:
-  - cargo build --verbose --all
-  - cargo doc --verbose --all
-  - cargo test --verbose --all
+  - cargo build -vv --workspace
+  - cargo doc -vv --workspace
+  - cargo test -vv --workspace
+  - cargo clean
+  - cargo build -vv --workspace --features "build-static-libselinux"
+  - cargo doc -vv --workspace --features "build-static-libselinux"
+  - cargo clean && cargo test -vv --workspace --features "build-static-libselinux"
 branches:
   only:
     - master
