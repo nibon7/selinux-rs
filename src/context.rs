@@ -1,5 +1,8 @@
-use std::ffi::CStr;
+use selinux_sys::*;
+use std::ffi::{CStr, CString};
 use std::fmt::{Debug, Display, Formatter};
+use std::os::unix::io::AsRawFd;
+use std::path::Path;
 pub struct Context {
     user: String,
     role: String,
@@ -19,19 +22,51 @@ macro_rules! context_access {
     };
 }
 
+macro_rules! wrap_ffi_get {
+    ($func:ident, $c:ident, $args:tt) => {{
+        let mut $c = std::ptr::null_mut();
+        unsafe {
+            match $func $args {
+                0 if !$c.is_null() => {
+                    let mut res = None;
+                    if let Some(s) = CStr::from_ptr($c).to_str().ok() {
+                        res = Context::new(s);
+                    }
+                    selinux_sys::freecon($c);
+                    res
+                },
+                _ => None,
+            }
+        }
+    }}
+}
+
 macro_rules! get_context {
     ($(#[$attr:meta])* $func:ident, $wrap:ident) => {
         $(#[$attr])*
         pub fn $func() -> Option<Self> {
-            let mut context = std::ptr::null_mut();
-            unsafe {
-                if selinux_sys::$wrap(&mut context) != 0 && context.is_null() {
-                    return None;
-                }
-                let res = Self::new(CStr::from_ptr(context).to_str().ok()?);
-                selinux_sys::freecon(context);
-                res
-            }
+            wrap_ffi_get!($wrap, context, (&mut context))
+        }
+    };
+}
+
+macro_rules! get_path_context {
+    ($(#[$attr:meta])* $func:ident, $wrap:ident) => {
+        pub fn $func(path: impl AsRef<Path>) -> Option<Self> {
+            let path = path
+                .as_ref()
+                .to_str()
+                .and_then(|s| CString::new(s).ok())?
+                .as_ptr();
+            wrap_ffi_get!($wrap, context, (path, &mut context))
+        }
+    };
+}
+
+macro_rules! get_fd_context {
+    ($(#[$attr:meta])* $func:ident, $wrap:ident) => {
+        pub fn $func(fd: impl AsRawFd) -> Option<Self> {
+            wrap_ffi_get!($wrap, context, (fd.as_raw_fd(), &mut context))
         }
     };
 }
@@ -84,6 +119,35 @@ impl Context {
         previous_raw,
         getprevcon_raw
     );
+
+    get_context!(
+        /// Retrieves the context used for executing a new process.
+        execute,
+        getexeccon
+    );
+
+    get_context!(
+        /// Identical to `execute` without context translation.
+        execute_raw,
+        getexeccon_raw
+    );
+
+    get_context!(fs_create, getfscreatecon);
+    get_context!(fs_create_raw, getfscreatecon_raw);
+    get_context!(key_create, getkeycreatecon);
+    get_context!(key_create_raw, getkeycreatecon_raw);
+    get_context!(socket_create, getsockcreatecon);
+    get_context!(socket_create_raw, getsockcreatecon_raw);
+
+    get_path_context!(file, getfilecon);
+    get_path_context!(file_raw, getfilecon_raw);
+    get_path_context!(file_nolink, lgetfilecon);
+    get_path_context!(file_nolink_raw, lgetfilecon_raw);
+
+    get_fd_context!(peer, getpeercon);
+    get_fd_context!(peer_raw, getpeercon_raw);
+    get_fd_context!(fd, fgetfilecon);
+    get_fd_context!(fd_raw, fgetfilecon_raw);
 }
 
 impl Display for Context {
