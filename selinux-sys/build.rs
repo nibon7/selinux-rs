@@ -43,7 +43,7 @@ fn try_pkg_config() -> Vec<PathBuf> {
 
 fn main() {
     println!("cargo:rerun-if-env-changed={}", SELINUX_STATIC);
-    println!("cargo:return-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=build.rs");
 
     let include_paths = try_pkg_config();
 
