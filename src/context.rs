@@ -86,7 +86,7 @@ macro_rules! set_path_context {
 
 macro_rules! set_fd_context {
     ($func:ident, $wrap:ident, $error:ident) => {
-        pub fn $func(&self, fd: impl AsRawFd) -> Result<()> {
+        pub fn $func(&self, fd: &impl AsRawFd) -> Result<()> {
             unsafe { $error(selinux_sys::$wrap(fd.as_raw_fd(), self.to_cstr())) }
         }
     };
@@ -107,7 +107,7 @@ macro_rules! get_path_context {
 
 macro_rules! get_fd_context {
     ($(#[$attr:meta])* $func:ident, $wrap:ident) => {
-        pub fn $func(fd: impl AsRawFd) -> Option<Self> {
+        pub fn $func(fd: &impl AsRawFd) -> Option<Self> {
             wrap_ffi_get!($wrap, context, (fd.as_raw_fd(), &mut context))
         }
     };
