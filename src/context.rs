@@ -1,3 +1,4 @@
+use crate::{Result, SeError};
 use selinux_sys::*;
 use std::ffi::{CStr, CString};
 use std::fmt::{Debug, Display, Formatter};
@@ -50,6 +51,47 @@ macro_rules! get_context {
     };
 }
 
+fn handle_error(ret: libc::c_int) -> Result<()> {
+    match ret {
+        0 => Ok(()),
+        _ => Err(SeError::GenericFailure("Generic".into())),
+    }
+}
+
+macro_rules! set_context {
+    ($(#[$attr:meta])* $func:ident, $wrap:ident) => {
+        $(#[$attr])*
+        pub fn $func(&self) -> Result<()> {
+            unsafe { handle_error(selinux_sys::$wrap(self.to_cstr())) }
+        }
+    };
+}
+
+macro_rules! set_path_context {
+    ($func:ident, $wrap:ident) => {
+        set_path_context!($func, $wrap, handle_error)
+    };
+    ($func:ident, $wrap:ident, $error:ident) => {
+        pub fn $func(&self, path: impl AsRef<Path>) -> Result<()> {
+            let path = CString::new(
+                path.as_ref()
+                    .to_str()
+                    .ok_or(SeError::InvalidPath(path.as_ref().to_owned()))?,
+            )?
+            .as_ptr();
+            unsafe { $error(selinux_sys::$wrap(self.to_cstr(), path)) }
+        }
+    };
+}
+
+macro_rules! set_fd_context {
+    ($func:ident, $wrap:ident, $error:ident) => {
+        pub fn $func(&self, fd: impl AsRawFd) -> Result<()> {
+            unsafe { $error(selinux_sys::$wrap(fd.as_raw_fd(), self.to_cstr())) }
+        }
+    };
+}
+
 macro_rules! get_path_context {
     ($(#[$attr:meta])* $func:ident, $wrap:ident) => {
         pub fn $func(path: impl AsRef<Path>) -> Option<Self> {
@@ -88,6 +130,10 @@ impl Context {
 
     pub fn to_string(&self) -> String {
         format!("{}:{}:{}:{}", self.user, self.role, self._type, self.range)
+    }
+
+    fn to_cstr(&self) -> *const i8 {
+        CString::new(self.to_string()).unwrap().as_ptr()
     }
 
     context_access!(user, set_user);
@@ -148,6 +194,26 @@ impl Context {
     get_fd_context!(peer_raw, getpeercon_raw);
     get_fd_context!(fd, fgetfilecon);
     get_fd_context!(fd_raw, fgetfilecon_raw);
+
+    set_context!(set_current, setcon);
+    set_context!(set_current_raw, setcon_raw);
+    set_context!(set_exec, setexeccon);
+    set_context!(set_exec_raw, setexeccon_raw);
+    set_context!(set_fs_create, setfscreatecon);
+    set_context!(set_fs_create_raw, setfscreatecon_raw);
+    set_context!(set_key_create, setkeycreatecon);
+    set_context!(set_key_create_raw, setkeycreatecon_raw);
+    set_context!(set_socket_create, setsockcreatecon);
+    set_context!(set_socket_create_raw, setsockcreatecon_raw);
+
+    set_path_context!(set_file, setfilecon, handle_error);
+    set_path_context!(set_file_raw, setfilecon_raw, handle_error);
+    set_path_context!(set_file_nolink, lsetfilecon, handle_error);
+    set_path_context!(set_file_nolink_raw, lsetfilecon_raw, handle_error);
+    set_path_context!(set_execfile, setexecfilecon, handle_error);
+
+    set_fd_context!(set_fd, fsetfilecon, handle_error);
+    set_fd_context!(set_fd_raw, fsetfilecon_raw, handle_error);
 }
 
 impl Display for Context {
