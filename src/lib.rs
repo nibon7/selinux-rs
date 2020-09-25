@@ -1,6 +1,3 @@
-extern crate errno;
-extern crate libc;
-
 mod context;
 mod error;
 mod utils;
