@@ -16,8 +16,12 @@ pub enum Error {
     NulErr(NulError),
     Utf8Err(Utf8Error),
     IoErr(IoError),
-    GenericFailure(String),
+    Generic,
     InvalidPath(PathBuf),
+    NoSpace,
+    QuotaEnforcement,
+    NotSupported,
+    SysErrno(isize),
 }
 
 impl From<NulError> for Error {
