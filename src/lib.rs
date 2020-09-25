@@ -1,6 +1,5 @@
 extern crate errno;
 extern crate libc;
-extern crate selinux_macros;
 
 mod context;
 mod error;
