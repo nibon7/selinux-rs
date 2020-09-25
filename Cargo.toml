@@ -23,4 +23,4 @@ members = [
 
 [features]
 default = []
-build-static-libselinux = ["selinux-sys/build-static"]
+build-static = ["selinux-sys/build-static"]
