@@ -85,10 +85,8 @@ macro_rules! set_context {
 }
 
 macro_rules! set_path_context {
-    ($func:ident, $wrap:ident) => {
-        set_path_context!($func, $wrap, handle_error)
-    };
-    ($func:ident, $wrap:ident, $error:ident) => {
+    ($(#[$attr:meta])* $func:ident, $wrap:ident, $error:ident) => {
+        $(#[$attr])*
         pub fn $func(&self, path: impl AsRef<Path>) -> Result<()> {
             let path = CString::new(path.as_ref().as_os_str().as_bytes())?.as_ptr();
             unsafe { $error(selinux_sys::$wrap(self.to_cstr(), path)) }
