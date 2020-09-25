@@ -10,15 +10,11 @@ edition = "2018"
 libc = "0.2"
 
 [build-dependencies]
-cc = "1.0"
-glob = "0.3.0"
+cc = { version = "1.0", optional = true }
+glob = { version = "0.3.0", optional = true }
 pkg-config = "0.3"
-
-[build-dependencies.bindgen]
-version = "0.55"
-default-features = false
-features = ["runtime"]
+bindgen = { version = "0.55", default-features = false, features = ["runtime"] }
 
 [features]
 default = []
-build-static = []
+build-static = ["cc", "glob"]

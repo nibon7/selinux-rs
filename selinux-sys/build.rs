@@ -1,15 +1,14 @@
 use bindgen;
-use cc;
-use glob;
-use pkg_config::probe_library;
 use std::env;
-use std::ffi::OsStr;
 use std::path::PathBuf;
-use std::process::Command;
 
 const SELINUX_STATIC: &str = "SELINUX_STATIC";
 
-fn build_static_libselinux() {
+#[cfg(feature = "build-static")]
+fn build_static_libselinux() -> Vec<PathBuf> {
+    use std::ffi::OsStr;
+    use std::process::Command;
+
     if !PathBuf::from("selinux/.git").exists() {
         Command::new("git")
             .args(&["submodule", "update", "--init"])
@@ -43,8 +42,11 @@ fn build_static_libselinux() {
         .cargo_metadata(true)
         .out_dir(&output_dir)
         .compile("libselinux.a");
+
+    vec![PathBuf::from("selinux/libselinux/include")]
 }
 
+#[cfg(not(feature = "build-static"))]
 fn print_library(lib: &pkg_config::Library, mode: &str) {
     for p in &lib.include_paths {
         println!("cargo:include={}", p.display());
@@ -67,8 +69,9 @@ fn print_library(lib: &pkg_config::Library, mode: &str) {
     }
 }
 
+#[cfg(not(feature = "build-static"))]
 fn try_pkg_config() -> Vec<PathBuf> {
-    let libselinux = probe_library("libselinux")
+    let libselinux = pkg_config::probe_library("libselinux")
         .expect("can't find libselinux, please install libselinux-devel or libselinux1-dev or try to use build-static feature to build libselinux from scratch.");
 
     let mode = match env::var_os(SELINUX_STATIC) {
@@ -82,22 +85,15 @@ fn try_pkg_config() -> Vec<PathBuf> {
 }
 
 fn main() {
-    let build_static = env::var("CARGO_FEATURE_BUILD_STATIC").is_ok();
-
     println!("cargo:rerun-if-changed=build.rs");
-    if !build_static {
+    if !cfg!(feature = "build-static") {
         println!("cargo:rerun-if-env-changed={}", SELINUX_STATIC);
     }
 
-    let mut include_paths: Vec<PathBuf>;
-
-    if build_static {
-        include_paths = Vec::new();
-        build_static_libselinux();
-        include_paths.push(PathBuf::from("selinux/libselinux/include"));
-    } else {
-        include_paths = try_pkg_config();
-    }
+    #[cfg(feature = "build-static")]
+    let include_paths = build_static_libselinux();
+    #[cfg(not(feature = "build-static"))]
+    let include_paths = try_pkg_config();
 
     let mut builder = bindgen::Builder::default()
         .header("wrapper.h")

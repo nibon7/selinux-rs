@@ -12,9 +12,9 @@ script:
   - cargo doc -vv --workspace
   - cargo test -vv --workspace
   - cargo clean
-  - cargo build -vv --workspace --features "build-static-libselinux"
-  - cargo doc -vv --workspace --features "build-static-libselinux"
-  - cargo clean && cargo test -vv --workspace --features "build-static-libselinux"
+  - cargo build -vv --workspace --features "build-static"
+  - cargo doc -vv --workspace --features "build-static"
+  - cargo clean && cargo test -vv --workspace --features "build-static"
 branches:
   only:
     - master
