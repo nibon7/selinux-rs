@@ -3,6 +3,7 @@ use errno::errno;
 use selinux_sys::*;
 use std::ffi::{CStr, CString};
 use std::fmt::{Debug, Display, Formatter};
+use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::AsRawFd;
 use std::path::Path;
 pub struct Context {
@@ -89,12 +90,7 @@ macro_rules! set_path_context {
     };
     ($func:ident, $wrap:ident, $error:ident) => {
         pub fn $func(&self, path: impl AsRef<Path>) -> Result<()> {
-            let path = CString::new(
-                path.as_ref()
-                    .to_str()
-                    .ok_or(Error::InvalidPath(path.as_ref().to_owned()))?,
-            )?
-            .as_ptr();
+            let path = CString::new(path.as_ref().as_os_str().as_bytes())?.as_ptr();
             unsafe { $error(selinux_sys::$wrap(self.to_cstr(), path)) }
         }
     };
