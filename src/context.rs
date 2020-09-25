@@ -1,4 +1,5 @@
-use crate::{Result, Error};
+use crate::{Error, Result};
+use errno::errno;
 use selinux_sys::*;
 use std::ffi::{CStr, CString};
 use std::fmt::{Debug, Display, Formatter};
@@ -54,7 +55,22 @@ macro_rules! get_context {
 fn handle_error(ret: libc::c_int) -> Result<()> {
     match ret {
         0 => Ok(()),
-        _ => Err(Error::GenericFailure("Generic".into())),
+        _ => Err(Error::Generic),
+    }
+}
+
+fn handle_file_error(ret: libc::c_int) -> Result<()> {
+    match ret {
+        0 => Ok(()),
+        _ => {
+            debug_assert_eq!(ret, -1); // assert the value only on debug build
+            Err(match errno().into() {
+                libc::ENOSPC => Error::NoSpace,
+                libc::EDQUOT => Error::QuotaEnforcement,
+                libc::ENOTSUP => Error::NotSupported,
+                e => Error::SysErrno(e as isize),
+            })
+        }
     }
 }
 
@@ -206,14 +222,16 @@ impl Context {
     set_context!(set_socket_create, setsockcreatecon);
     set_context!(set_socket_create_raw, setsockcreatecon_raw);
 
-    set_path_context!(set_file, setfilecon, handle_error);
-    set_path_context!(set_file_raw, setfilecon_raw, handle_error);
-    set_path_context!(set_file_nolink, lsetfilecon, handle_error);
-    set_path_context!(set_file_nolink_raw, lsetfilecon_raw, handle_error);
+    set_path_context!(set_file, setfilecon, handle_file_error);
+    set_path_context!(set_file_raw, setfilecon_raw, handle_file_error);
+    set_path_context!(set_file_nolink, lsetfilecon, handle_file_error);
+    set_path_context!(set_file_nolink_raw, lsetfilecon_raw, handle_file_error);
+
+    // TODO: Is this function pass a errno ?
     set_path_context!(set_execfile, setexecfilecon, handle_error);
 
-    set_fd_context!(set_fd, fsetfilecon, handle_error);
-    set_fd_context!(set_fd_raw, fsetfilecon_raw, handle_error);
+    set_fd_context!(set_fd, fsetfilecon, handle_file_error);
+    set_fd_context!(set_fd_raw, fsetfilecon_raw, handle_file_error);
 }
 
 impl Display for Context {
