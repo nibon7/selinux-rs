@@ -1,4 +1,4 @@
-use crate::{Result, SeError};
+use crate::{Result, Error};
 use selinux_sys::*;
 use std::ffi::{CStr, CString};
 use std::fmt::{Debug, Display, Formatter};
@@ -54,7 +54,7 @@ macro_rules! get_context {
 fn handle_error(ret: libc::c_int) -> Result<()> {
     match ret {
         0 => Ok(()),
-        _ => Err(SeError::GenericFailure("Generic".into())),
+        _ => Err(Error::GenericFailure("Generic".into())),
     }
 }
 
@@ -76,7 +76,7 @@ macro_rules! set_path_context {
             let path = CString::new(
                 path.as_ref()
                     .to_str()
-                    .ok_or(SeError::InvalidPath(path.as_ref().to_owned()))?,
+                    .ok_or(Error::InvalidPath(path.as_ref().to_owned()))?,
             )?
             .as_ptr();
             unsafe { $error(selinux_sys::$wrap(self.to_cstr(), path)) }
