@@ -32,7 +32,7 @@ macro_rules! wrap_ffi_get {
         let mut $c = std::ptr::null_mut();
         unsafe {
             match $func $args {
-                0 if !$c.is_null() => {
+                x if x != -1 && !$c.is_null() => {
                     let mut res = None;
                     if let Some(s) = CStr::from_ptr($c).to_str().ok() {
                         res = Context::new(s);
