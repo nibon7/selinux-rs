@@ -3,9 +3,11 @@ use errno::errno;
 use selinux_sys::*;
 use std::ffi::{CStr, CString};
 use std::fmt::{Debug, Display, Formatter};
+use std::fs::File;
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::io::AsRawFd;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
 pub struct Context {
     user: String,
     role: String,
@@ -252,6 +254,50 @@ impl Display for Context {
 impl Debug for Context {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         Display::fmt(self, f)
+    }
+}
+
+pub trait Getcon {
+    fn getcon(&self) -> Option<Context>;
+}
+
+pub trait Setcon {
+    fn setcon(&self, con: impl AsRef<Context>) -> Result<()>;
+}
+
+impl Getcon for Path {
+    fn getcon(&self) -> Option<Context> {
+        Context::file(self)
+    }
+}
+
+impl Setcon for Path {
+    fn setcon(&self, con: impl AsRef<Context>) -> Result<()> {
+        con.as_ref().set_file(self)
+    }
+}
+
+impl Getcon for PathBuf {
+    fn getcon(&self) -> Option<Context> {
+        Context::file(self.as_path())
+    }
+}
+
+impl Setcon for PathBuf {
+    fn setcon(&self, con: impl AsRef<Context>) -> Result<()> {
+        con.as_ref().set_file(self.as_path())
+    }
+}
+
+impl Getcon for File {
+    fn getcon(&self) -> Option<Context> {
+        Context::fd(self)
+    }
+}
+
+impl Setcon for File {
+    fn setcon(&self, con: impl AsRef<Context>) -> Result<()> {
+        con.as_ref().set_fd(self)
     }
 }
 
