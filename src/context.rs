@@ -237,6 +237,12 @@ impl PartialEq for Context {
     }
 }
 
+impl AsRef<Context> for Context {
+    fn as_ref(&self) -> &Self {
+        self
+    }
+}
+
 impl Display for Context {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         write!(f, "{}", self.to_string())
