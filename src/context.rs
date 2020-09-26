@@ -81,7 +81,8 @@ macro_rules! set_context {
     ($(#[$attr:meta])* $func:ident, $wrap:ident) => {
         $(#[$attr])*
         pub fn $func(&self) -> Result<()> {
-            unsafe { handle_error(selinux_sys::$wrap(self.to_cstr())) }
+            let cs = self.to_cstring();
+            unsafe { handle_error(selinux_sys::$wrap(cs.as_ptr())) }
         }
     };
 }
@@ -91,7 +92,8 @@ macro_rules! set_path_context {
         $(#[$attr])*
         pub fn $func(&self, path: impl AsRef<Path>) -> Result<()> {
             let path = CString::new(path.as_ref().as_os_str().as_bytes())?.as_ptr();
-            unsafe { $error(selinux_sys::$wrap(self.to_cstr(), path)) }
+            let cs = self.to_cstring();
+            unsafe { $error(selinux_sys::$wrap(cs.as_ptr(), path)) }
         }
     };
 }
@@ -99,7 +101,8 @@ macro_rules! set_path_context {
 macro_rules! set_fd_context {
     ($func:ident, $wrap:ident, $error:ident) => {
         pub fn $func(&self, fd: &impl AsRawFd) -> Result<()> {
-            unsafe { $error(selinux_sys::$wrap(fd.as_raw_fd(), self.to_cstr())) }
+            let cs = self.to_cstring();
+            unsafe { $error(selinux_sys::$wrap(fd.as_raw_fd(), cs.as_ptr())) }
         }
     };
 }
@@ -144,8 +147,10 @@ impl Context {
         format!("{}:{}:{}:{}", self.user, self.role, self._type, self.range)
     }
 
-    fn to_cstr(&self) -> *const i8 {
-        CString::new(self.to_string()).unwrap().as_ptr()
+    // NOTE: CString's as_ptr() do not keep it from being dropped, you must keep
+    // a binding or reference yourself
+    fn to_cstring(&self) -> CString {
+        CString::new(self.to_string()).unwrap()
     }
 
     context_access!(user, set_user);
