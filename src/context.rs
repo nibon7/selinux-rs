@@ -228,6 +228,15 @@ impl Context {
     set_fd_context!(set_fd_raw, fsetfilecon_raw, handle_file_error);
 }
 
+impl PartialEq for Context {
+    fn eq(&self, other: &Self) -> bool {
+        self.user == other.user
+            && self.role == other.role
+            && self._type == other._type
+            && self.range == other.range
+    }
+}
+
 impl Display for Context {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         write!(f, "{}", self.to_string())
@@ -266,6 +275,10 @@ mod tests {
         let context = Context::new(CONTEXT_WITHOUT_RANGE).unwrap();
         assert_eq!(context.range(), "");
         assert_eq!(context._type(), "type_t");
+
+        let context1 = Context::new(CONTEXT).unwrap();
+        let context2 = Context::new(CONTEXT).unwrap();
+        assert_eq!(context1, context2);
     }
 
     #[test]
