@@ -110,12 +110,8 @@ macro_rules! set_fd_context {
 macro_rules! get_path_context {
     ($(#[$attr:meta])* $func:ident, $wrap:ident) => {
         pub fn $func(path: impl AsRef<Path>) -> Option<Self> {
-            let path = path
-                .as_ref()
-                .to_str()
-                .and_then(|s| CString::new(s).ok())?
-                .as_ptr();
-            wrap_ffi_get!($wrap, context, (path, &mut context))
+            let cs = path.as_ref().to_str().and_then(|s| CString::new(s).ok())?;
+            wrap_ffi_get!($wrap, context, (cs.as_ptr(), &mut context))
         }
     };
 }
