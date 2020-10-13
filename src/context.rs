@@ -15,6 +15,53 @@ pub struct Context {
     range: String,
 }
 
+#[derive(Default)]
+pub struct ContextBuilder {
+    user: String,
+    role: String,
+    _type: String,
+    range: String,
+}
+
+impl ContextBuilder {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn build(&self) -> Option<Context> {
+        if !self.user.is_empty() && !self.role.is_empty() && !self._type.is_empty() {
+            Some(Context {
+                user: self.user.clone(),
+                role: self.role.clone(),
+                _type: self._type.clone(),
+                range: self.range.clone(),
+            })
+        } else {
+            None
+        }
+    }
+
+    pub fn user(&mut self, user: &str) -> &mut Self {
+        self.user = user.to_owned();
+        self
+    }
+
+    pub fn role(&mut self, role: &str) -> &mut Self {
+        self.role = role.to_owned();
+        self
+    }
+
+    pub fn _type(&mut self, _type: &str) -> &mut Self {
+        self._type = _type.to_owned();
+        self
+    }
+
+    pub fn range(&mut self, range: &str) -> &mut Self {
+        self.range = range.to_owned();
+        self
+    }
+}
+
 macro_rules! context_access {
     ($field:ident, $setter:ident) => {
         pub fn $field(&self) -> &str {
