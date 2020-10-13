@@ -102,10 +102,13 @@ fn main() {
         .whitelist_function(".*con")
         .whitelist_function(".*conary")
         .whitelist_function(".*con_raw")
-        .whitelist_function(".*selinux.**")
+        .whitelist_function(".*selinux.*")
+        .whitelist_type(".*selinux.*")
         .whitelist_function("security_.*")
         .whitelist_function(".*matchpathcon.*")
         .whitelist_function(".*context.*")
+        .whitelist_function(".*avc.*")
+        .whitelist_var(".*AVC.*")
         .derive_debug(false)
         .derive_eq(true);
 
